@@ -2,7 +2,7 @@ import os
 import sys
 from typing import List
 import sacrebleu
-from sacremoses import MosesTokenizer as STLTokenizer
+from sacremoses import MosesTokenizer
 
 def load_file(filename: str) -> List[str]:
     with open(filename, 'r', encoding='utf-8') as f:
@@ -24,9 +24,9 @@ def load_references(ref_dir: str, num_refs: int = 1) -> List[List[str]]:
             print(f"Warning: Reference file {ref_file} not found. Using single reference mode.")
             break
     return references
-def evaluate_bleu(hypotheses: List[str], references: List[List[str]], tokenizer: STLTokenizer = None) -> dict:
+def evaluate_bleu(hypotheses: List[str], references: List[List[str]], tokenizer: MosesTokenizer = None) -> dict:
     if tokenizer is None:
-        tokenizer = STLTokenizer()
+        tokenizer = MosesTokenizer()
 
     # Tokenize references
     tokenized_refs = []
@@ -68,9 +68,8 @@ def main():
     min_len = min(len(hypotheses), len(references))
     hypotheses = hypotheses[:min_len]
     references = references[:min_len]
-    tokenizer = STLTokenizer()
+    tokenizer = MosesTokenizer()
     results = evaluate_bleu(hypotheses, references, tokenizer)
     # Save to file
     with open(output_file, 'w', encoding='utf-8') as f:
-
         f.write(f"BLEU Score: {results['bleu']:.2f}\n")
