@@ -1,14 +1,12 @@
 import os
-import sys
 from typing import List
-import sacrebleu
+from sacrebleu.metrics import BLEU, CHRF, TER
 from sacremoses import MosesTokenizer
 
 def load_file(filename: str) -> List[str]:
     with open(filename, 'r', encoding='utf-8') as f:
         lines = [line.strip() for line in f.readlines() if line.strip()]
     return lines
-
 def load_references(ref_dir: str, num_refs: int = 1) -> List[List[str]]:
     references = []
     for i in range(num_refs):
@@ -24,7 +22,7 @@ def load_references(ref_dir: str, num_refs: int = 1) -> List[List[str]]:
             print(f"Warning: Reference file {ref_file} not found. Using single reference mode.")
             break
     return references
-def evaluate_bleu(hypotheses: List[str], references: List[List[str]], tokenizer: MosesTokenizer = None) -> dict:
+def evaluate_bleu(target: List[str], references: List[List[str]], tokenizer: MosesTokenizer = None) -> dict:
     if tokenizer is None:
         tokenizer = MosesTokenizer()
 
@@ -36,40 +34,35 @@ def evaluate_bleu(hypotheses: List[str], references: List[List[str]], tokenizer:
             tokens = tokenizer.tokenize(ref)
             tokenized_ref_list.append(' '.join(tokens))
         tokenized_refs.append(tokenized_ref_list)
-    bleu = sacrebleu.corpus_bleu(
-        sys=[hyp for hyp in hypotheses],  # Hypotheses (raw text; SacreBLEU will tokenize)
-        ref=tokenized_refs,  # Tokenized references
-        tokenize='13a',  # Moses tokenizer for hypotheses (standard for BLEU)
-        smooth_method='exp(0.1)',  # Standard smoothing (method1 equivalent)
-        force=False,  # Use default settings
-        lowercase=True  # Case-insensitive BLEU
+    bleu = BLEU(
+        lowercase=True,
+        tokenize='13a',
+        smooth_method='exp',
+        smooth_value=0.1,
+        force=False,
+        effective_order=True
     )
-
+    bleu.corpus_score(target, tokenized_refs)
     return {
         'bleu': bleu.score,
-        'precisions': bleu.stats.precisions,
-        'bp': bleu.stats.bp,
-        'length_ratio': bleu.stats.sys_len / bleu.stats.ref_len,
-        'full_score': str(bleu),  # Full SacreBLEU string for reproducibility
-        'signature': bleu.format_signature()  # For exact reproducibility
+        'signature': bleu.get_signature()
     }
 def main():
-    # Configuration (adjust paths as needed)
-    hypo_file = 'hypotheses.txt'  # Model outputs
-    ref_dir = 'references/'  # Directory with reference files (e.g., ref.0.en)
+    hypo_file = 'target.txt'
+    ref_dir = 'references/'
     output_file = 'bleu_results.txt'
 
     # Load data
     if not os.path.exists(hypo_file):
-        print(f"Error: Hypotheses file {hypo_file} not found.")
+        print(f"Error: target file {hypo_file} not found.")
         return
-    hypotheses = load_file(hypo_file)
+    target = load_file(hypo_file)
     references = load_references(ref_dir)
-    min_len = min(len(hypotheses), len(references))
-    hypotheses = hypotheses[:min_len]
+    min_len = min(len(target), len(references))
+    hypotheses = target[:min_len]
     references = references[:min_len]
     tokenizer = MosesTokenizer()
-    results = evaluate_bleu(hypotheses, references, tokenizer)
+    results = evaluate_bleu(target, references, tokenizer)
     # Save to file
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(f"BLEU Score: {results['bleu']:.2f}\n")
