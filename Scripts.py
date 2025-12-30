@@ -2,7 +2,7 @@ import os
 import sys
 from typing import List
 import sacrebleu
-from reference_tokenization import STLTokenizer
+from sacremoses import MosesTokenizer as STLTokenizer
 
 def load_file(filename: str) -> List[str]:
     with open(filename, 'r', encoding='utf-8') as f:
@@ -72,4 +72,5 @@ def main():
     results = evaluate_bleu(hypotheses, references, tokenizer)
     # Save to file
     with open(output_file, 'w', encoding='utf-8') as f:
+
         f.write(f"BLEU Score: {results['bleu']:.2f}\n")
